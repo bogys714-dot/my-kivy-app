@@ -1,0 +1,38 @@
+FROM ubuntu:22.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Устанавливаем зависимости
+RUN apt-get update && apt-get install -y \
+    python3 \
+    python3-pip \
+    python3-venv \
+    openjdk-11-jdk \
+    wget \
+    unzip \
+    zip \
+    git \
+    && rm -rf /var/lib/apt/lists/*
+
+# Устанавливаем Buildozer
+RUN pip3 install buildozer cython
+
+# Устанавливаем Android SDK
+ENV ANDROID_SDK_ROOT=/opt/android-sdk
+RUN mkdir -p ${ANDROID_SDK_ROOT} && \
+    wget -q https://dl.google.com/android/repository/commandlinetools-linux-8512546_latest.zip -O /tmp/sdk.zip && \
+    unzip -q /tmp/sdk.zip -d /tmp && \
+    mv /tmp/cmdline-tools ${ANDROID_SDK_ROOT}/cmdline-tools-latest && \
+    rm /tmp/sdk.zip
+
+ENV PATH=$PATH:${ANDROID_SDK_ROOT}/cmdline-tools-latest/bin
+
+# Принимаем лицензии и устанавливаем компоненты (с явным указанием SDK root)
+RUN yes | sdkmanager --sdk_root=${ANDROID_SDK_ROOT} --licenses && \
+    sdkmanager --sdk_root=${ANDROID_SDK_ROOT} "platform-tools" "platforms;android-33" "build-tools;33.0.0" "ndk;25.2.9519653"
+
+# Явно создаем симлинки для AIDL
+RUN ln -sf ${ANDROID_SDK_ROOT}/build-tools/33.0.0/aidl /usr/local/bin/aidl && \
+    ln -sf ${ANDROID_SDK_ROOT}/build-tools/33.0.0 ${ANDROID_SDK_ROOT}/build-tools/36.1.0
+
+WORKDIR /app
